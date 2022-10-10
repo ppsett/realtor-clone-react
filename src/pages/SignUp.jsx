@@ -2,6 +2,11 @@ import React, { useState} from 'react'
 import {AiFillEyeInvisible,AiFillEye} from 'react-icons/ai'
 import {Link} from 'react-router-dom'
 import OAuth from '../components/OAuth';
+import {getAuth, createUserWithEmailAndPassword, updateProfile} from "firebase/auth";
+import {serverTimestamp, setDoc, doc} from "firebase/firestore";
+import {db} from "../firebase";
+import {toast} from "react-toastify";
+import {useNavigate} from "react-router-dom";
 
 export default function SignUp() {
 
@@ -12,6 +17,7 @@ export default function SignUp() {
         password: "",
     });
     const {name, email, password} = formData;
+    const navigate = useNavigate();
 
     function onChange(e){
         setFormData((prevState)=>({
@@ -19,10 +25,33 @@ export default function SignUp() {
             [e.target.id]: e.target.value,
         }));
     }
+
+    async function onSubmit(e){
+      e.preventDefault();
+
+      try {
+          const auth = getAuth();
+          const userCredential = await createUserWithEmailAndPassword(auth,email,password);
+
+          updateProfile(auth.currentUser, {displayName:name});
+          const user = userCredential.user;
+
+          const formDataCopy = {...formData}
+          delete formDataCopy.password
+          formDataCopy.timestamp = serverTimestamp();
+          await setDoc(doc(db, "users", user.uid), formDataCopy)
+
+          //toast.success("Sign up was successful");
+          //navigate("/");
+      } catch (error) {
+          toast.error("Something went wrong with the registration.");
+      }
+  }
+
   return (
     <section>
         <h1 className="text-3xl text-center mt-6 font-bold">
-            Sign up
+            Sign Up
         </h1>
         <div className="flex justify-center flex-wrap
         items-center px-6 py-12 max-w-6xl mx-auto">
@@ -31,7 +60,7 @@ export default function SignUp() {
                 alt="key" className="w-full rounded-2xl"/>
             </div>
             <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20">
-                <form>
+                <form onSubmit={onSubmit}>
                     <div>
                         <input type="text" id="name" value={name}
                         onChange={onChange}
